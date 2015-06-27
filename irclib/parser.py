@@ -3,7 +3,7 @@ import re
 """
 IRC clientside library
 
-Copyright (C) 2014, Tyler Philbrick
+Copyright (C) 2014, Tyler Philbrick, Paul Bersee
 All Rights Reserved
 For license information, see COPYING
 """
@@ -25,6 +25,7 @@ Any part of the line not included is None
 class Line(object):
     def __init__(self, line, mcserverlist):
         self._regex = re.compile("\x0f|\x1f|\x02|\x03(?:\d{1,2}(?:,\d{1,2})?)?", re.UNICODE)
+        line = line.rstrip('\r\n')
         
         self._serverList = mcserverlist #['ORESchool','OREBuild','ORESurvival']
         self._frommc = False

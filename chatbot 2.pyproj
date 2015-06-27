@@ -26,13 +26,29 @@
     <Compile Include="irclib\baseclient.py" />
     <Compile Include="irclib\baseirc.py" />
     <Compile Include="irclib\parser.py" />
+    <Compile Include="mcuuid.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="irclib\__init__.py" />
     <Compile Include="forums.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="plotdata\plotmap.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="plotdata\__init__.py">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="irclib\" />
+    <Folder Include="plotdata\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="help.txt">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="plotdata\plot map.sqlite" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

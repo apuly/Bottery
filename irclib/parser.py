@@ -23,13 +23,9 @@ Any part of the line not included is None
 """
 
 class Line(object):
-    def __init__(self, line, mcserverlist):
+    def __init__(self, line):
         self._regex = re.compile("\x0f|\x1f|\x02|\x03(?:\d{1,2}(?:,\d{1,2})?)?", re.UNICODE)
-        line = line.rstrip('\r\n')
-        
-        self._serverList = mcserverlist #['ORESchool','OREBuild','ORESurvival']
-        self._frommc = False
-        
+        line = line.rstrip('\r\n')        
         
         line = self._regex.sub("", line)
         self._raw = line
@@ -49,32 +45,32 @@ class Line(object):
 
             
         
-        #code added for ORE server chat compatibility
-        if self._nick and self._serverList:
-            if self._nick in self._serverList: #move serverList to external variable
-                self._frommc = True
-                words = self._params[-1].split()
-                if words[0][-1] == ':':
-                    self._mcevent = 'message'
-                    mcsender = words[0][:-1]
-                    mcmessage = ' '.join(words[1:])
-                    self._mcparams = (mcsender, mcmessage,)
+        ##code added for ORE server chat compatibility
+        #if self._nick and self._serverList:
+        #    if self._nick in self._serverList: #move serverList to external variable
+        #        self._frommc = True
+        #        words = self._params[-1].split()
+        #        if words[0][-1] == ':':
+        #            self._mcevent = 'message'
+        #            mcsender = words[0][:-1]
+        #            mcmessage = ' '.join(words[1:])
+        #            self._mcparams = (mcsender, mcmessage,)
                         
-                else:
-                    regex = re.match(r'^(\w+) (left|joined) the game', self._params[-1])
-                    if regex:
-                        self._mcparams = regex.group(1)
-                        self._mcevent = 'player' + regex.group(2)
-                        return
-                    regex = re.match(r'(\d{1,2}) player\/s online: ([(, )+](, )?)*', self._params[-1])
-                    if regex:
-                        self._mcevent = 'mcplayerlist'
-                        self._mcparams = [int(regex.group(1))]
-                        params = self._params[-1].split(': ')[1].strip('\n').split(', ')
-                        for i in range(len(params)):
-                            params[i] = params[i].split(']',1)[-1]
-                        #print(params)
-                        self._mcparams.append(params)
+        #        else:
+        #            regex = re.match(r'^(\w+) (left|joined) the game', self._params[-1])
+        #            if regex:
+        #                self._mcparams = regex.group(1)
+        #                self._mcevent = 'player' + regex.group(2)
+        #                return
+        #            regex = re.match(r'(\d{1,2}) player\/s online: ([(, )+](, )?)*', self._params[-1])
+        #            if regex:
+        #                self._mcevent = 'mcplayerlist'
+        #                self._mcparams = [int(regex.group(1))]
+        #                params = self._params[-1].split(': ')[1].strip('\n').split(', ')
+        #                for i in range(len(params)):
+        #                    params[i] = params[i].split(']',1)[-1]
+        #                #print(params)
+        #                self._mcparams.append(params)
 
 
 
@@ -110,17 +106,17 @@ class Line(object):
 
     #code added for ORE server chat compatibility
 
-    @property
-    def mcparams(self):
-        return self._mcparams
+    #@property
+    #def mcparams(self):
+    #    return self._mcparams
 
-    @property
-    def mcevent(self):
-        return self._mcevent
+    #@property
+    #def mcevent(self):
+    #    return self._mcevent
 
-    @property
-    def frommc(self):
-        return self._frommc
+    #@property
+    #def frommc(self):
+    #    return self._frommc
 
 def spl1n(string, sep):
     """Splits string once on the first occurance of sep

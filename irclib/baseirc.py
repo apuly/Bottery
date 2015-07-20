@@ -8,6 +8,8 @@ For license information, see COPYING
 
 import socket
 from collections import namedtuple, defaultdict
+import queue
+import threading
 
 import irclib.parser as parser
 
@@ -105,23 +107,57 @@ class BaseIRC(object):
         #    print(E)
         except AttributeError:
             pass
+    
+    #def queue(self):
+    #    while True:
+    #        line = self.messageQueue.get().decode()
+    #        if self.printing:
+    #            try:
+    #                print(">> " + line)
+    #            except UnicodeEncodeError:
+    #                pass
+    #        p_line = parser.Line(line)
+    #        self._handle_register(p_line)
+
+    def queue(self):
+        while True:
+            lines = self.messageQueue.get().decode().split('\r\n')
+            if '' in lines:
+                lines.remove('')
+            for line in lines:
+                if self.printing:
+                    try:
+                        print(">> " + line)
+                    except UnicodeEncodeError:
+                        pass
+                p_line = parser.Line(line)
+                self._handle_register(p_line)
 
     def run(self):
         """Run IRC program"""
-        sockf = self.sock.makefile()
+        self.messageQueue = queue.Queue()
+        thread = threading.Thread(target=self.queue)
+        thread.start()
+        while True:
+               try:
+                   self.messageQueue.put(self.sock.recv(5120))
+               except:
+                   pass
 
-        for line in sockf:
-            if self.printing:
-                try:
-                    print((">> " + line).rstrip('\r\n'))
-                except UnicodeEncodeError:
-                    pass
-            p_line = parser.Line(line, self.mcserverlist)
-            #additional code created for porting to openredstone server chat
-            if not p_line.frommc:
-                self._handle_register(p_line)
-            else:
-                self._handle_mc_registered(p_line)
+        #sockf = self.sock.makefile()
+
+        #for line in sockf:
+        #    if self.printing:
+        #        try:
+        #            print((">> " + line).rstrip('\r\n'))
+        #        except UnicodeEncodeError:
+        #            pass
+        #    p_line = parser.Line(line, self.mcserverlist)
+        #    #additional code created for porting to openredstone server chat
+        #    if not p_line.frommc:
+        #        self._handle_register(p_line)
+        #    else:
+        #        self._handle_mc_registered(p_line)
 
     #additional functions added for porting to openredstone server chat
     def mcprivmsg(self, line, message, mctarget = None, irctarget = None):

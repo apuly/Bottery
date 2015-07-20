@@ -7,6 +7,7 @@ For license information, see COPYING
 """
 
 from irclib.baseirc import BaseIRC
+import re
 
 
 class BaseClient(BaseIRC):
@@ -23,29 +24,72 @@ class BaseClient(BaseIRC):
         send = "PONG :{}".format(line.params[-1])
         self._send(send)
 
+    
+   
+    def respond(self, line, message, irctarget = None, mctarget = None):
+        irctarget = irctarget or line.nick
+        if line.nick in self.mcserverlist:
+            mctarget = mctarget or line.params[-1].split()[0][:-1]
+            self.privmsg(".msg {} {}".format(mctarget, message), irctarget)
+        else:
+            self.privmsg(message, irctarget)  
+   
+
     def handle_PRIVMSG(self, line):
-        """Calls gocmd_<word> when command is received"""
-        
+        """Calls cmd_<word> when command is received"""
+        if line.nick in self.mcserverlist:
+            self.handleMcMessage(line)
+        else:
+            self.handleIrcMessage(line)
+
+    def handleIrcMessage(self, line):  
         try:
             if not line.params[-1].startswith(self.cmdchar):
                 return
         except AttributeError:
             return
         try:
-            getattr(self, "cmd_" + line.params[-1].split()[0][1:].upper())(line)
+            getattr(self, "cmd_" + line.params[-1].split()[0][1:].upper())(line, line.nick, line.params[-1].split())
         except AttributeError:
             pass
 
-    #code created for porting to openredstone server chat
-    def mc_handle_MESSAGE(self, line):
-        try:
-            if not line.mcparams[1].startswith(self.cmdchar):
+
+    def handleMcMessage(self, line):
+        words = line.params[-1].split()
+        if words[0][-1] == ':': 
+            if not words[1].startswith(self.cmdchar):
                 return
-        except AttributeError:
-            return
-        try:
-            getattr(self, "mc_cmd_" + line.mcparams[1].split()[0][1:].upper())(line)
-        except AttributeError as E:
-            print(E)
-            pass
-        
+            try:
+                getattr(self, "cmd_" + words[1][1:].upper())(line, words[0][:-1], words[1:])
+            except AttributeError:
+                pass
+        else:
+            regex = re.match(r'^(\w+) (left|joined) the game', line.params[-1])
+            if regex:
+                print('mc_handle_PLAYER'+regex.group(2).upper())
+                try:
+                    getattr(self, "mc_handle_PLAYER{}".format(regex.group(2).upper()))(line, regex.group(1))
+                except AttributeError:
+                    pass
+                finally:
+                    return
+                #self._mcparams = regex.group(1)
+                #self._mcevent = 'player' + regex.group(2)
+            regex = re.match(r'(\d{1,2}) player\/s online:( [(, )+](, )?)*', line.params[-1])
+            if regex:
+                #self._mcevent = 'mcplayerlist'
+                #self._mcparams = [int(regex.group(1))]
+                if line.params[-1][-1] != ':':
+                    params = line.params[-1].split(': ')[1].strip('\n').split(', ')
+                    for i in range(len(params)):
+                        params[i] = params[i].split(']',1)[-1]
+                else: 
+                    params = []
+                try:
+                    getattr(self, "mc_handle_MCPLAYERLIST")(line, int(regex.group(1)), params)
+                except AttributeError:
+                    pass
+                finally:
+                    return
+                #print(params)
+                #self._mcparams.append(params)

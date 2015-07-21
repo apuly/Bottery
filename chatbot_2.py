@@ -14,6 +14,8 @@ import forums
 import string
 import plotdata.plotmap as plotmap
 import mcuuid
+from collections import defaultdict
+import re
 #import json
 #import urllib.request
 
@@ -23,13 +25,16 @@ class MyIRC(BaseClient):
         self.cmdchar = ","
         self.mcserverlist = ['OREBuild', 'ORESchool', 'ORESurvival']
         self.mcplayerlist = {}
-        self.mcplayerdata = {}
+        self.userdata = {'irc': defaultdict(dict), 'mc': defaultdict(dict)}
        
     def handle_JOIN(self, line):
         if self.nick == line.nick:
             self.printing = True
             self.getplayerlist()
-
+    
+    def handle_QUIT(self, line):
+        if self.frommc(line.nick):
+            self.mcplayerlist[line.nick] = []
 
     def mc_handle_MCPLAYERLIST(self, line, *args):
         if args[0] == 0:
@@ -71,9 +76,8 @@ class MyIRC(BaseClient):
             self.respond(line, send)
 
     def cmd_SEARCH(self, line, *args):
-        print('executing search command')
-        if len(args[1]) < 1:
-            self.respond('Please put in something to search.')
+        if len(args[1]) < 2:
+            self.respond(line, 'Please put in something to search.')
             return 
         searchTerm = args[1][1]
         searchParams = self.searchParams(searchTerm)
@@ -81,7 +85,7 @@ class MyIRC(BaseClient):
         if results is None:
             self.respond(line, 'Cooldown period has not yet expired. Please wait.')
             return
-        self.mcplayerdata[args[0]] = {'searchResults': results[0:5]}
+        self.addUserData(line, results, args[0], 'searchResults')
         i=1
         for result in results[0:5]:
             self.respond(line, '{}: {}'.format(i, result[1]))
@@ -89,22 +93,30 @@ class MyIRC(BaseClient):
         self.respond(line, 'Use the {}result command to view the links.'.format(self.cmdchar))
 
     def cmd_RESULT(self, line, *args):
-        try:
-            data = self.mcplayerdata[line.params[0]]['searchResults']
-        except KeyError:
+        if len(args[1]) < 2:
+            self.respond(line, 'Please select what data you want.')
+            return
+        data = self.getUserData(line, args[0], 'searchResults')
+        if data is None:
             self.respond(line, 'No data found. Before using this command, please use the {}search command.'.format(self.cmdchar))
             return
-        s_number = args[1][1][0]
-        if s_number in string.digits:
-            index = int(s_number)-1
-            if 0 <= index <= 4:
-                try:
-                    self.respond(line, 'http://{}/{}'.format(forum.ip, data[index][0]))
-                    return
-                except IndexError:
-                    self.respond(line, 'No data found.')
-                    return
-        self.respond(line, 'Please enter a number between 1 and 5')
+        s_number = args[1][1]
+        if s_number not in string.digits:
+            self.respond(line, 'Please enter a number between 1 and 5')
+            return
+        index = int(s_number)-1
+        if 0 <= index <= len(data):
+            link = 'http://{}/{}'.format(forum.ip, data[index][0])
+            if len(args[1]) < 3:
+                self.respond(line, link)
+            else:
+                playerName = args[1][2].strip('@')
+                self.respond(line, link, self.findPlayer(playerName), playerName)
+
+
+        else:
+            self.respond(line, 'No data found.')
+            return
 
     def cmd_TIME(self, line, *args):
         self.respond(line, "It's time to go fuck yourself.")
@@ -118,7 +130,6 @@ class MyIRC(BaseClient):
             plotList = plotdb.getPlotsByName(playerName)
             if len(plotList) == 0:
                 uuid = mcuuid.getUuidByCurrentName(playerName)
-                print(uuid)
                 if uuid is None:
                     self.respond(line, 'No player found')
                     return
@@ -134,8 +145,8 @@ class MyIRC(BaseClient):
                     self.respond(line, 'X:{}, Y:{}, coordinates: {}, {}'.format(plot[0], plot[1], xcoord, ycoord))
         elif i == 3:
             try:
-                xcoord = int(words[1])
-                ycoord = int(words[2])
+                xcoord = int(args[1][1])
+                ycoord = int(args[1][2])
             except ValueError:
                 self.respond(line, 'Please input valid coordinates.')
                 return
@@ -165,6 +176,41 @@ class MyIRC(BaseClient):
         except NameError:
             pass
 
+    def addUserData(self, line, data, userName, dataName):
+        if self.frommc(line):
+            self.userdata['mc'][userName][dataName] = data
+        else:
+            self.userdata['irc'][userName][dataName] = data
+
+    def getUserData(self, line, userName, dataName):
+        if self.frommc(line):
+            try:
+                return self.userdata['mc'][userName][dataName]
+            except ValueError:
+                return None
+        else:
+            try:
+                return self.userdata['irc'][userName][dataName]
+            except ValueError:
+                return None
+
+    def respond(self, line, message, irctarget = None, mctarget = None):
+        irctarget = irctarget or line.nick
+        if line.nick in self.mcserverlist:
+            mctarget = mctarget or line.params[-1].split()[0][:-1]
+            self.privmsg(".msg {} {}".format(mctarget, message), irctarget)
+        else:
+            self.privmsg(message, irctarget)  
+   
+    def findPlayer(self, playerName):
+        for item in self.mcplayerlist:
+            if playerName in self.mcplayerlist[item]:
+                return item
+
+
+    def frommc(self, line):
+        return line.nick in self.mcserverlist
+
     def searchParams(self, searchTerm):
         return {'submit':      'Search',
                   'sortordr':    'desc',
@@ -190,7 +236,7 @@ if __name__ == "__main__":
         ("usern", "hostn", "realn"),
         "BotteryV2",
         "#openredstone",
-        printing = True
+        printing = False
     )
 
     irc.run()

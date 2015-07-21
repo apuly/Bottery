@@ -24,17 +24,6 @@ class BaseClient(BaseIRC):
         send = "PONG :{}".format(line.params[-1])
         self._send(send)
 
-    
-   
-    def respond(self, line, message, irctarget = None, mctarget = None):
-        irctarget = irctarget or line.nick
-        if line.nick in self.mcserverlist:
-            mctarget = mctarget or line.params[-1].split()[0][:-1]
-            self.privmsg(".msg {} {}".format(mctarget, message), irctarget)
-        else:
-            self.privmsg(message, irctarget)  
-   
-
     def handle_PRIVMSG(self, line):
         """Calls cmd_<word> when command is received"""
         if line.nick in self.mcserverlist:
@@ -66,7 +55,6 @@ class BaseClient(BaseIRC):
         else:
             regex = re.match(r'^(\w+) (left|joined) the game', line.params[-1])
             if regex:
-                print('mc_handle_PLAYER'+regex.group(2).upper())
                 try:
                     getattr(self, "mc_handle_PLAYER{}".format(regex.group(2).upper()))(line, regex.group(1))
                 except AttributeError:

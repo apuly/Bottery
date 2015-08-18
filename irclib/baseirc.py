@@ -36,7 +36,7 @@ class BaseIRC(object):
         Adds \r\n at the end of messages
         """
         if self.printing:
-            print("<< " + message)
+            print(("<< " + message))
         self.sock.sendall((message + "\r\n").encode())
 
     def connect(self, server=None):
@@ -106,7 +106,7 @@ class BaseIRC(object):
         for line in sockf:
             line = line.rstrip("\r\n")
             if self.printing:
-                print((">> " + line))
+                print(">> " + line)
             p_line = parser.Line(line)
             self._handle_register(p_line)
 

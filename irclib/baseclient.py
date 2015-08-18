@@ -45,7 +45,9 @@ class BaseClient(BaseIRC):
 
     def handleMcMessage(self, line):
         words = line.params[-1].split()
-        if words[0][-1] == ':': 
+        if words[0][-1] == ':':
+            if len(words) == 1:
+                return
             if not words[1].startswith(self.cmdchar):
                 return
             try:
@@ -71,7 +73,7 @@ class BaseClient(BaseIRC):
                     params = line.params[-1].split(': ')[1].strip('\n').split(', ')
                     for i in range(len(params)):
                         params[i] = params[i].split(']',1)[-1]
-                else: 
+                else:
                     params = []
                 try:
                     getattr(self, "mc_handle_MCPLAYERLIST")(line, int(regex.group(1)), params)

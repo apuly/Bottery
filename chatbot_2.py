@@ -11,29 +11,35 @@ For license information, see COPYING
 
 from irclib.baseclient import BaseClient
 import forums
-import string
 import plotdata.plotmap as plotmap
 import mcuuid
 from collections import defaultdict
 import re
+import threading
+from time import sleep
+import configparser
 #import json
 #import urllib.request
 
 class MyIRC(BaseClient):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.cmdchar = ","
-        self.mcserverlist = ['OREBuild', 'ORESchool', 'ORESurvival']
+        self.cmdchar = config['BOT']['cmdChar']
+        self.mcserverlist = config['MC']['serverList'].split()
         self.mcplayerlist = {}
         self.userdata = {'irc': defaultdict(dict), 'mc': defaultdict(dict)}
+        self.config = loadSettings()
        
+    def loop(self):
+        self.getplayerlist()
+        
     def handle_JOIN(self, line):
         if self.nick == line.nick:
             self.printing = True
-            self.getplayerlist()
+            self.start_background_loop()
     
     def handle_QUIT(self, line):
-        if self.frommc(line.nick):
+        if self.frommc(line):
             self.mcplayerlist[line.nick] = []
 
     def mc_handle_MCPLAYERLIST(self, line, *args):
@@ -51,6 +57,10 @@ class MyIRC(BaseClient):
         if not args[0] in self.mcplayerlist[line.nick]:
             self.mcplayerlist[line.nick].append(args[0])
 
+    def cmd_RELOAD(self, line, *args):
+        self.respond(line, 'Reloading the configuration.')
+        self.config = loadSettings()
+
     def cmd_HELP(self, line, *args):
         self.respond(line, '{}list: Gives list of players on all servers'.format(self.cmdchar))
         self.respond(line, '{}search: Searches forums'.format(self.cmdchar))
@@ -64,7 +74,6 @@ class MyIRC(BaseClient):
     def cmd_REFRESHLIST(self, line, *args):
         self.respond(line, "Refreshing player list")
         self.getplayerlist()
-    
             
     def cmd_LIST(self, line, *args):
         if self.mcplayerlist is None:
@@ -76,78 +85,81 @@ class MyIRC(BaseClient):
             self.respond(line, send)
 
     def cmd_SEARCH(self, line, *args):
+        if not self.config['FORUM'].getboolean('enabled'):
+            self.respond(line, 'This command has been disabled.')
+            return
         if len(args[1]) < 2:
             self.respond(line, 'Please put in something to search.')
             return 
         searchTerm = args[1][1]
         searchParams = self.searchParams(searchTerm)
-        results = forum.search(searchParams)
-        if results is None:
-            self.respond(line, 'Cooldown period has not yet expired. Please wait.')
-            return
-        self.addUserData(line, results, args[0], 'searchResults')
+        try:
+            forum.search('/search.php', searchParams)
+        except forums.NoRedirect:
+            self.respond("No redirect link was found. Either no results were found, or you need to retry.")
+        except forums.NoPageFound:
+            self.respond("Page could not be loaded. The forums might be down")
+        self.addUserData(line, forum.searchResults[:5], args[0], 'searchResults')
         i=1
-        for result in results[0:5]:
-            self.respond(line, '{}: {}'.format(i, result[1]))
+        for result in forum.searchResults[:5]:
+            self.respond(line, '{}: {}'.format(i, result.title[0]))
             i += 1
         self.respond(line, 'Use the {}result command to view the links.'.format(self.cmdchar))
 
     def cmd_RESULT(self, line, *args):
+        if not self.config['FORUM'].getboolean('enabled'):
+            self.respond(line, 'This command has been disabled.')
+            return
         if len(args[1]) < 2:
             self.respond(line, 'Please select what data you want.')
             return
+        s_number = args[1][1]
+        if not s_number.isdigit():
+            self.respond(line, 'Please enter a number between 1 and 5')
+            return
+        index = int(s_number)
         data = self.getUserData(line, args[0], 'searchResults')
         if data is None:
             self.respond(line, 'No data found. Before using this command, please use the {}search command.'.format(self.cmdchar))
             return
-        s_number = args[1][1]
-        if s_number not in string.digits:
-            self.respond(line, 'Please enter a number between 1 and 5')
-            return
-        index = int(s_number)-1
         if 0 <= index <= len(data):
-            link = 'http://{}/{}'.format(forum.ip, data[index][0])
-            if len(args[1]) < 3:
-                self.respond(line, link)
-            else:
-                playerName = args[1][2].strip('@')
-                self.respond(line, link, self.findPlayer(playerName), playerName)
-
-
+            link = 'http://{}/{}'.format(forum.ip, data[index][1])
+            self.respond(line, link)
         else:
             self.respond(line, 'No data found.')
             return
+        
 
     def cmd_TIME(self, line, *args):
         self.respond(line, "It's time to go fuck yourself.")
 
     def cmd_PLOT(self, line, *args):
+        if not self.config['PLOT'].getboolean('enabled'):
+            self.respond(line, 'This command has been disabled.')
+            return
         i = len(args[1])
         if i == 1:
             self.respond(line, 'Please input a nickname or plot coordinates')
         elif i == 2:
             playerName = args[1][1]
             plotList = plotdb.getPlotsByName(playerName)
-            if len(plotList) == 0:
+            if not plotList:
                 uuid = mcuuid.getUuidByCurrentName(playerName)
-                if uuid is None:
+                if not uuid:
                     self.respond(line, 'No player found')
                     return
                 else:
                     plotList = plotdb.getPlotsByUuid(uuid)
-            if len(plotList) == 0:
-                self.respond(line, 'No plots found with owner {}'.format(playerName))
-            else:
-                self.respond(line, 'Plots owned by {}'.format(playerName))
-                for plot in plotList:
-                    xcoord = plot[0] * 256 + 128
-                    ycoord = plot[1] * 256 + 128
-                    self.respond(line, 'X:{}, Y:{}, coordinates: {}, {}'.format(plot[0], plot[1], xcoord, ycoord))
+            self.respond(line, 'Plots owned by {}'.format(playerName))
+            for plot in plotList:
+                xcoord = plot[0] * 256 + 128
+                ycoord = plot[1] * 256 + 128
+                self.respond(line, 'X:{}, Y:{}, coordinates: {}, {}'.format(plot[0], plot[1], xcoord, ycoord))
         elif i == 3:
-            try:
+            if args[1][1].isdigit() and args[1][2].isdigit():
                 xcoord = int(args[1][1])
                 ycoord = int(args[1][2])
-            except ValueError:
+            else:
                 self.respond(line, 'Please input valid coordinates.')
                 return
             owner = plotdb.getOwnerByPlayerCoords(xcoord, ycoord)
@@ -184,17 +196,17 @@ class MyIRC(BaseClient):
 
     def getUserData(self, line, userName, dataName):
         if self.frommc(line):
-            try:
-                return self.userdata['mc'][userName][dataName]
-            except ValueError:
-                return None
+            target = 'mc'
         else:
-            try:
-                return self.userdata['irc'][userName][dataName]
-            except ValueError:
-                return None
+            target = 'irc'
+
+        if userName in self.userdata[target]:
+            if dataName in self.userdata[target][userName]:
+                return self.userdata[target][userName][dataName]
+        return None
 
     def respond(self, line, message, irctarget = None, mctarget = None):
+       
         irctarget = irctarget or line.nick
         if line.nick in self.mcserverlist:
             mctarget = mctarget or line.params[-1].split()[0][:-1]
@@ -224,18 +236,39 @@ class MyIRC(BaseClient):
                   'findthreadst': '1',
                   'action': 'do_search' }
         
+    def start_background_loop(self):
+        thread = threading.Thread(target = self._loop, daemon = True)
+        thread.start()
+
+    def _loop(self):
+        while True:
+            self.loop()
+            sleep(60)
+
+
+def loadSettings():
+    config = configparser.ConfigParser()
+    config.read('settings.txt')
+    return config
+
+plotdb = None
+forum = None
+
 
 if __name__ == "__main__":
     print("launching chatbot v2")
-    forum = forums.open('forum.openredstone.org', ssl = True)
-    plotdb = plotmap.plotmap('plot map.sqlite')
+    config = loadSettings()
+    forum = forums.forum(config['FORUM']['ip'], ssl = config['FORUM'].getboolean('ssl'))
+    plotdb = plotmap.plotmap(config['PLOT']['dbFile'])
     plotdb.connect()
     #forum.open()
+
+    sub_config = config['IRC']
     irc = MyIRC(
-        ("irc.openredstone.org", 6667),
-        ("usern", "hostn", "realn"),
-        "BotteryV2",
-        "#openredstone",
+        (sub_config['ip'], sub_config.getint('port')),
+        (sub_config['username'], sub_config['hostname'], sub_config['realname']),
+        sub_config['nick'],
+        sub_config['channel'],
         printing = False
     )
 

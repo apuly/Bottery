@@ -1,0 +1,28 @@
+[IRC]
+ip = irc.openredstone.org
+port = 6667
+
+username = usern
+hostname = hostn
+realname = realn
+
+nick = BotteryV2
+channel = #openredstone
+
+[BOT]
+loop = True
+cmdChar = -
+
+[FORUM]
+enabled = True
+ip = forum.openredstone.org
+ssl = True
+
+[PLOT]
+enabled = True
+dbFile = plotmap.db
+
+[MC]
+serverList = OREBuild
+	ORESchool
+	ORESurvival

@@ -77,8 +77,7 @@ class MyIRC(BaseClient):
             
     def cmd_LIST(self, line, *args):
         if self.mcplayerlist is None:
-            return
-        self.respond(line, 'Player list:')
+            self.respond(line, 'Player list:')
         for mcserver in self.mcplayerlist:
             #print(self.mcplayerlist[mcserver])
             send = '{}: {}'.format(mcserver, ', '.join(self.mcplayerlist[mcserver]))
@@ -117,13 +116,13 @@ class MyIRC(BaseClient):
         if not s_number.isdigit():
             self.respond(line, 'Please enter a number between 1 and 5')
             return
-        index = int(s_number)
-        data = self.getUserData(line, args[0], 'searchResults')
-        if data is None:
+        index = int(s_number) - 1
+        searchData = self.getUserData(line, args[0], 'searchResults')
+        if searchData is None:
             self.respond(line, 'No data found. Before using this command, please use the {}search command.'.format(self.cmdchar))
             return
-        if 0 <= index <= len(data):
-            link = 'http://{}/{}'.format(forum.ip, data[index][1])
+        if 0 <= index <= len(searchData):
+            link = 'http://{}/{}'.format(forum.ip, searchData[index].title[1])
             self.respond(line, link)
         else:
             self.respond(line, 'No data found.')
@@ -167,6 +166,7 @@ class MyIRC(BaseClient):
                 self.respond(line, 'Plot has no owner.')
             else:
                 self.respond(line, 'Plot owned by {}'.format(owner[0]))
+
 
             
 
@@ -238,7 +238,6 @@ class MyIRC(BaseClient):
         
     def start_background_loop(self):
         thread = threading.Thread(target = self._loop, daemon = True)
-        thread.start()
 
     def _loop(self):
         while True:
@@ -269,7 +268,7 @@ if __name__ == "__main__":
         (sub_config['username'], sub_config['hostname'], sub_config['realname']),
         sub_config['nick'],
         sub_config['channel'],
-        printing = False
+        printing = True
     )
 
     irc.run()

@@ -83,6 +83,26 @@ class MyIRC(BaseClient):
             send = '{}: {}'.format(mcserver, ', '.join(self.mcplayerlist[mcserver]))
             self.respond(line, send)
 
+    def cmd_APP(self, line, *args):
+        if not self.config['FORUM'].getboolean('enabled'):
+            self.respond(line, 'This command has been disabled.')
+            return
+        if len(args[1]) < 2:
+            self.respond(line, 'Please put in a nickname to search.')
+            return
+        searchTerm = args[1][1]
+        searchParams = self.searchParams(searchTerm, 37)
+        try:
+            forum.search('/search.php', searchParams)
+        except forums.NoRedirect:
+            self.respond("No redirect link was found. Either no results were found, or you need to retry.")
+        except forums.NoPageFound:
+            self.respond("Page could not be loaded. The forums might be down")
+        result = forum.searchResults[0]
+        self.respond(line, 'http://{}/{}'.format(forum.ip, result.title[1]))
+
+
+
     def cmd_SEARCH(self, line, *args):
         if not self.config['FORUM'].getboolean('enabled'):
             self.respond(line, 'This command has been disabled.')
@@ -155,7 +175,7 @@ class MyIRC(BaseClient):
                 ycoord = plot[1] * 256 + 128
                 self.respond(line, 'X:{}, Y:{}, coordinates: {}, {}'.format(plot[0], plot[1], xcoord, ycoord))
         elif i == 3:
-            if args[1][1].isdigit() and args[1][2].isdigit():
+            if args[1][1].isint() and args[1][2].isint():
                 xcoord = int(args[1][1])
                 ycoord = int(args[1][2])
             else:
@@ -223,26 +243,31 @@ class MyIRC(BaseClient):
     def frommc(self, line):
         return line.nick in self.mcserverlist
 
-    def searchParams(self, searchTerm):
+    def searchParams(self, searchTerm, forums = ''):
         return {'submit':      'Search',
-                  'sortordr':    'desc',
-                  'sortby':      'lastpost',
-                  'showresults': 'threads',
-                  'postthread':  '1',
-                  'postdate':    '0',
-                  'pddir':       '1',
-                  'keywords': searchTerm,
-                  'forum[]': '10',
-                  'findthreadst': '1',
-                  'action': 'do_search' }
+                    'sortordr':    'desc',
+                    'sortby':      'lastpost',
+                    'showresults': 'threads',
+                    'postthread':  '1',
+                    'postdate':    '0',
+                    'pddir':       '1',
+                    'keywords': searchTerm,
+                    'forums[]': forums,
+                    'findthreadst': '1',
+                    'action': 'do_search' }
         
     def start_background_loop(self):
-        thread = threading.Thread(target = self._loop, daemon = True)
+        thread = threading.Thread(target = self._loop)
 
     def _loop(self):
         while True:
             self.loop()
             sleep(60)
+
+    def isint(s):
+        if s[0] in ('-', '+'):
+            return s[1:].isdigit()
+        return s.isdigit()
 
 
 def loadSettings():

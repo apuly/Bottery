@@ -31,8 +31,8 @@ class BaseClient(BaseIRC):
         """Calls cmd_<word> when command is received"""
         if line.nick in self.mcserverlist:
             self.handleMcMessage(line)
-        #else:
-        #    self.handleIrcMessage(line)
+        else:
+            self.handleIrcMessage(line)
 
     def handleIrcMessage(self, line):  
         try:

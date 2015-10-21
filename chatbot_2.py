@@ -94,9 +94,9 @@ class MyIRC(BaseClient):
         searchParams = self.searchParams(searchTerm, 37)
         try:
             forum.search('/search.php', searchParams)
-        except forums.NoRedirect:
+        except forum.NoRedirect:
             self.respond("No redirect link was found. Either no results were found, or you need to retry.")
-        except forums.NoPageFound:
+        except forum.NoPageFound:
             self.respond("Page could not be loaded. The forums might be down")
         result = forum.searchResults[0]
         self.respond(line, 'http://{}/{}'.format(forum.ip, result.title[1]))
@@ -258,6 +258,7 @@ class MyIRC(BaseClient):
         
     def start_background_loop(self):
         thread = threading.Thread(target = self._loop)
+        thread.start()
 
     def _loop(self):
         while True:

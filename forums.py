@@ -9,6 +9,10 @@ class forum(object):
         self._ip = ip
         self._ssl = ssl
         self._port = port
+
+    @property
+    def ip(self):
+        return self._ip
     
     #setup the http connection to the forum; returns connection
     def _conn(self):

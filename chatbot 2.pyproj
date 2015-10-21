@@ -23,6 +23,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="chatbot_2.py" />
+    <Compile Include="forums.py" />
     <Compile Include="irclib\baseclient.py" />
     <Compile Include="irclib\baseirc.py" />
     <Compile Include="irclib\parser.py" />
@@ -30,9 +31,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="irclib\__init__.py" />
-    <Compile Include="forums.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="plotdata\plotmap.py">
       <SubType>Code</SubType>
     </Compile>
@@ -48,7 +46,8 @@
     <Content Include="help.txt">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="plotdata\plot map.sqlite" />
+    <Content Include="plotmap.db" />
+    <Content Include="settings.txt" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

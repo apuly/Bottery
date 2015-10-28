@@ -8,7 +8,6 @@ For license information, see COPYING
 
 from irclib.baseirc import BaseIRC
 import re
-from time import sleep
 
 
 class BaseClient(BaseIRC):

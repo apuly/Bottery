@@ -147,7 +147,20 @@ class MyIRC(BaseClient):
         else:
             self.respond(line, 'No data found.')
             return
-        
+
+    def cmd_R(self, line, *args):
+        cmd_result(line, args[0], args[1])
+    
+    def cmd_FIRST(self, line, *args):
+        if not self.config['FORUM'].getboolean('enabled'):
+           self.respond(line, 'This command has been disabled.')
+           return   
+        searchData = self.getUserData(line, args[0], 'searchResults')
+        if searchData is None:
+            self.respond(line, 'No data found. Before using this command, please use the {}search command.'.format(self.cmdchar))
+            return
+        link = 'http://{}/{}'.format(forum.ip, searchData[0].title[1])
+        self.respond(line, link)
 
     def cmd_TIME(self, line, *args):
         self.respond(line, "It's time to go fuck yourself.")
@@ -175,7 +188,7 @@ class MyIRC(BaseClient):
                 ycoord = plot[1] * 256 + 128
                 self.respond(line, 'X:{}, Y:{}, coordinates: {}, {}'.format(plot[0], plot[1], xcoord, ycoord))
         elif i == 3:
-            if args[1][1].isint() and args[1][2].isint():
+            if isint(args[1][1]) and isint(args[1][2]):
                 xcoord = int(args[1][1])
                 ycoord = int(args[1][2])
             else:

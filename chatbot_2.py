@@ -149,7 +149,7 @@ class MyIRC(BaseClient):
             return
 
     def cmd_R(self, line, *args):
-        cmd_result(line, args[0], args[1])
+        self.cmd_RESULT(line, args[0], args[1])
     
     def cmd_FIRST(self, line, *args):
         if not self.config['FORUM'].getboolean('enabled'):
@@ -278,10 +278,10 @@ class MyIRC(BaseClient):
             self.loop()
             sleep(60)
 
-    def isint(s):
-        if s[0] in ('-', '+'):
-            return s[1:].isdigit()
-        return s.isdigit()
+def isint(s):
+    if s[0] in ('-', '+'):
+        return s[1:].isdigit()
+    return s.isdigit()
 
 
 def loadSettings():

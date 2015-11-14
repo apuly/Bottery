@@ -141,7 +141,7 @@ class MyIRC(BaseClient):
         if searchData is None:
             self.respond(line, 'No data found. Before using this command, please use the {}search command.'.format(self.cmdchar))
             return
-        if 0 <= index <= len(searchData):
+        if 0 <= index < len(searchData):
             link = 'http://{}/{}'.format(forum.ip, searchData[index].title[1])
             self.respond(line, link)
         else:

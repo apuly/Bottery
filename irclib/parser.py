@@ -3,7 +3,7 @@ import re
 """
 IRC clientside library
 
-Copyright (C) 2014, Tyler Philbrick, Paul Bersee
+Copyright (C) 2014, Tyler Philbrick
 All Rights Reserved
 For license information, see COPYING
 """
